@@ -30,6 +30,10 @@ import tza
 # 5. Install PyTorch: pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 # 6. Install ONNX and ONNX runtime: pip3 install onnx onnxruntime
 
+# Run:
+# 1. Configure ModelParameter
+# 2. Activate Python virtual environment: ./MyPythonEnv/Scripts/Activate.ps1
+# 3. Run: Python .\training\onnx_export.py
 
 # Collection of all parameters used to createa and export a version of the OIDN model with extracted weigths
 @dataclass
