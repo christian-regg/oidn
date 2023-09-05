@@ -94,3 +94,10 @@ Thumbs.db
 include/OpenImageDenoise/config.h
 common/export.linux.map
 common/export.macos.map
+
+
+# Python environment
+py_env_cuda/**
+
+# Exported ONNX files
+*.onnx
