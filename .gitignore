@@ -98,6 +98,10 @@ common/export.macos.map
 
 # Python environment
 py_env_cuda/**
+py_env_cuda_nightly/**
 
 # Exported ONNX files
 *.onnx
+
+# Installed build
+installed/**
