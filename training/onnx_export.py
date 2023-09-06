@@ -6,8 +6,7 @@ import numpy as np
 from dataclasses import dataclass
 
 from torch import nn
-import torch.utils.model_zoo as model_zoo
-import torch.onnx
+from torch.onnx import _constants as torch_onnx_constants
 
 import onnx
 import onnxruntime
@@ -116,7 +115,7 @@ def export(param: ModelParameter, torch_model: nn.Module) -> str:
                     x,                          # model input (or a tuple for multiple inputs)
                     filename,                   # where to save the model (can be a file or file-like object)
                     export_params=True,         # store the trained parameter weights inside the model file
-                    opset_version=11,           # the ONNX version to export the model to
+                    # opset_version=18,           # the ONNX version to export the model to
                     do_constant_folding=False,  # whether to execute constant folding for optimization
                     input_names=['input'],      # the model's input names
                     output_names=['output'],    # the model's output names
@@ -157,6 +156,9 @@ def test(param: ModelParameter, torch_model: nn.Module, filename: str):
 
 # Helper to create, export and test a version of the OIDN model with extracted weights
 def create_export_test(param: ModelParameter):
+  print(f'torch.onnx.ONNX_MIN_OPSET={torch_onnx_constants.ONNX_MIN_OPSET}, torch.onnx.ONNX_MAX_OPSET={torch_onnx_constants.ONNX_MAX_OPSET}')
+  print(f'onnx.version={onnx.version.version!r}, opset={onnx.defs.onnx_opset_version()}, IR_VERSION={onnx.onnx_pb.IR_VERSION}')
+
   torch_model = create(param)
   filename = export(param, torch_model)
 
