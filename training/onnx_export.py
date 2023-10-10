@@ -156,9 +156,6 @@ def test(param: ModelParameter, torch_model: nn.Module, filename: str):
 
 # Helper to create, export and test a version of the OIDN model with extracted weights
 def create_export_test(param: ModelParameter):
-  print(f'torch.onnx.ONNX_MIN_OPSET={torch_onnx_constants.ONNX_MIN_OPSET}, torch.onnx.ONNX_MAX_OPSET={torch_onnx_constants.ONNX_MAX_OPSET}')
-  print(f'onnx.version={onnx.version.version!r}, opset={onnx.defs.onnx_opset_version()}, IR_VERSION={onnx.onnx_pb.IR_VERSION}')
-
   torch_model = create(param)
   filename = export(param, torch_model)
 
@@ -169,6 +166,9 @@ def create_export_test(param: ModelParameter):
 
 
 if __name__ == '__main__':
+  print(f'torch.onnx.ONNX_MIN_OPSET={torch_onnx_constants.ONNX_MIN_OPSET}, torch.onnx.ONNX_MAX_OPSET={torch_onnx_constants.ONNX_MAX_OPSET}')
+  print(f'onnx.version={onnx.version.version!r}, opset={onnx.defs.onnx_opset_version()}, IR_VERSION={onnx.onnx_pb.IR_VERSION}')
+  
   param = ModelParameter()
 
   # export model that denoises using only color buffer
