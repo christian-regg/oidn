@@ -41,6 +41,7 @@ class ModelParameter:
   use_normal: bool = False      # use auxiliary feature buffer albeo
   input_width: int = 1280       # input image width
   input_height: int = 720       # input image height
+  input_dynamic: bool = False   # has input image width and height dynamic size?
   input_type: any = torch.half  # used type
   device: str = "cuda"          # device to use (note: dtype torch.half not supported on CPU for this model)
   hdr: bool = True              # hdr input
@@ -98,7 +99,11 @@ def create(param: ModelParameter) -> nn.Module:
 # Export a torch model to the ONNX format
 def export(param: ModelParameter, torch_model: nn.Module) -> str:
   # Generate the filename for the model to export
-  filename_parts = ['oidn2', get_weights_name(param), str(param.input_width) + 'x' + str(param.input_height)]
+  filename_parts = ['oidn2', get_weights_name(param) ]
+  
+  if param.input_dynamic: filename_parts.append("dyn")
+  else: filename_parts.append(str(param.input_width) + 'x' + str(param.input_height))
+  
   if isFP16(param): filename_parts.append('fp16')
 
   filename = '_'.join(filename_parts) + '.onnx'
@@ -110,17 +115,21 @@ def export(param: ModelParameter, torch_model: nn.Module) -> str:
   x = torch.randn(1, get_num_channels(param), param.input_height, param.input_width, dtype=param.input_type, requires_grad=True)
   # torch_out = torch_model(x)
 
+  dynamic_axes = None
+  if param.input_dynamic:
+    dynamic_axes = {'input' : {2 : 'height', 3: 'width'},    # variable length axes
+                    'output' : {2 : 'height', 3: 'width'}}
+
   # Export the model
   torch.onnx.export(torch_model,                # model being run
                     x,                          # model input (or a tuple for multiple inputs)
                     filename,                   # where to save the model (can be a file or file-like object)
                     export_params=True,         # store the trained parameter weights inside the model file
-                    # opset_version=18,           # the ONNX version to export the model to
+                    opset_version=11,           # the ONNX version to export the model to
                     do_constant_folding=False,  # whether to execute constant folding for optimization
                     input_names=['input'],      # the model's input names
                     output_names=['output'],    # the model's output names
-                    # dynamic_axes={'input' : {2 : 'height', 3: 'width'},    # variable length axes
-                    #               'output' : {2 : 'height', 3: 'width'}}
+                    dynamic_axes=dynamic_axes   # variable length axes
   )
 
   print('Exported to ' + filename)
@@ -170,6 +179,24 @@ if __name__ == '__main__':
   print(f'onnx.version={onnx.version.version!r}, opset={onnx.defs.onnx_opset_version()}, IR_VERSION={onnx.onnx_pb.IR_VERSION}')
   
   param = ModelParameter()
+
+  # export model that denoises using only color buffer
+  create_export_test(param)
+
+  # export model that denoises using color and albedo buffers
+  param.use_albedo = True
+  create_export_test(param)
+
+  # export model that denoises using all buffers (color, albedo and normal)
+  param.use_normal = True
+  create_export_test(param)
+
+  ###
+
+  # export everything again with dynamic axis width and height
+  param.use_albedo = False
+  param.use_normal = False
+  param.input_dynamic = True
 
   # export model that denoises using only color buffer
   create_export_test(param)
