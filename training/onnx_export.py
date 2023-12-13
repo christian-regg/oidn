@@ -39,10 +39,10 @@ import tza
 class ModelParameter:
   use_albedo: bool = False      # use auxiliary feature buffer albeo
   use_normal: bool = False      # use auxiliary feature buffer albeo
-  input_width: int = 1280       # input image width
-  input_height: int = 720       # input image height
-  input_type: any = torch.half  # used type
-  device: str = "cuda"          # device to use (note: dtype torch.half not supported on CPU for this model)
+  input_width: int = -1       # input image width
+  input_height: int = -1       # input image height
+  input_type: any = torch.float  # used type
+  device: str = "cpu"          # device to use (note: dtype torch.half not supported on CPU for this model)
   hdr: bool = True              # hdr input
 
 
@@ -98,7 +98,9 @@ def create(param: ModelParameter) -> nn.Module:
 # Export a torch model to the ONNX format
 def export(param: ModelParameter, torch_model: nn.Module) -> str:
   # Generate the filename for the model to export
-  filename_parts = ['oidn2', get_weights_name(param), str(param.input_width) + 'x' + str(param.input_height)]
+  filename_parts = ['oidn2', get_weights_name(param)]
+  if param.input_width == -1 or param.input_height == -1: filename_parts.append('dyn')
+  else: filename_parts.append(str(param.input_width) + 'x' + str(param.input_height))
   if isFP16(param): filename_parts.append('fp16')
 
   filename = '_'.join(filename_parts) + '.onnx'
@@ -107,20 +109,31 @@ def export(param: ModelParameter, torch_model: nn.Module) -> str:
   torch_model.eval()
 
   # Input to the model
-  x = torch.randn(1, get_num_channels(param), param.input_height, param.input_width, dtype=param.input_type, requires_grad=True)
+  test_widht = param.input_width if param.input_width > 0 else 1280
+  test_height = param.input_height if param.input_height > 0 else 720
+
+  x = torch.randn(1, get_num_channels(param), test_height, test_widht, dtype=param.input_type, requires_grad=True)
   # torch_out = torch_model(x)
+
+  dynamic_axes = None
+  if param.input_width == -1:
+    dynamic_axes = dynamic_axes or { 'input' : { } }
+    dynamic_axes['input'][3] = 'width'
+
+  if param.input_height == -1:
+    dynamic_axes = dynamic_axes or { 'input' : { } }
+    dynamic_axes['input'][2] = 'height'
 
   # Export the model
   torch.onnx.export(torch_model,                # model being run
                     x,                          # model input (or a tuple for multiple inputs)
                     filename,                   # where to save the model (can be a file or file-like object)
                     export_params=True,         # store the trained parameter weights inside the model file
-                    # opset_version=18,           # the ONNX version to export the model to
+                    opset_version=9,           # the ONNX version to export the model to
                     do_constant_folding=False,  # whether to execute constant folding for optimization
                     input_names=['input'],      # the model's input names
                     output_names=['output'],    # the model's output names
-                    # dynamic_axes={'input' : {2 : 'height', 3: 'width'},    # variable length axes
-                    #               'output' : {2 : 'height', 3: 'width'}}
+                    dynamic_axes=dynamic_axes
   )
 
   print('Exported to ' + filename)
@@ -135,7 +148,10 @@ def test(param: ModelParameter, torch_model: nn.Module, filename: str):
 
   # Generate reference output using torch
   # TODO match devices??
-  x = torch.randn(1, get_num_channels(param), param.input_height, param.input_width, dtype=param.input_type, requires_grad=True)
+  test_widht = param.input_width if param.input_width > 0 else 1280
+  test_height = param.input_height if param.input_height > 0 else 720
+
+  x = torch.randn(1, get_num_channels(param), test_height, test_widht, dtype=param.input_type, requires_grad=True)
   torch_out = torch_model(x)
 
   # Run the model with ONNX Runtime
