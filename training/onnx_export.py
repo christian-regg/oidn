@@ -42,9 +42,10 @@ class ModelParameter:
   input_width: int = 1280       # input image width
   input_height: int = 720       # input image height
   input_dynamic: bool = False   # has input image width and height dynamic size?
-  input_type: any = torch.half  # used type
-  device: str = "cuda"          # device to use (note: dtype torch.half not supported on CPU for this model)
+  input_type: any = torch.float  # used type
+  device: str = "cpu"          # device to use (note: dtype torch.half not supported on CPU for this model)
   hdr: bool = True              # hdr input
+  opset_version: int = 9        # ONNX operator version
 
 
 # Get the name of the weights file dependent on the used auxilary feature buffers
@@ -105,6 +106,7 @@ def export(param: ModelParameter, torch_model: nn.Module) -> str:
   else: filename_parts.append(str(param.input_width) + 'x' + str(param.input_height))
   
   if isFP16(param): filename_parts.append('fp16')
+  filename_parts.append('opset-' + str(param.opset_version))
 
   filename = '_'.join(filename_parts) + '.onnx'
   
@@ -128,7 +130,7 @@ def export(param: ModelParameter, torch_model: nn.Module) -> str:
                     x,                          # model input (or a tuple for multiple inputs)
                     filename,                   # where to save the model (can be a file or file-like object)
                     export_params=True,         # store the trained parameter weights inside the model file
-                    opset_version=11,           # the ONNX version to export the model to
+                    opset_version=param.opset_version, # the ONNX version to export the model to
                     do_constant_folding=False,  # whether to execute constant folding for optimization
                     input_names=['input'],      # the model's input names
                     output_names=['output'],    # the model's output names
